@@ -1,6 +1,8 @@
 import { type Application, Container } from 'pixi.js'
 import { type IScene } from './IScene'
 import { Game } from '../Game'
+import { SceneManager } from './SceneManager'
+import { AssetsFactory } from '../AssetsFactory'
 
 interface IGameSceneOptions {
   app: Application
@@ -18,7 +20,10 @@ export class GameScene extends Container implements IScene {
   }
 
   setup (_: IGameSceneOptions): void {
-    this.game = new Game()
+    this.game = new Game({
+      pixiApp: SceneManager.app,
+      assets: new AssetsFactory()
+    })
   }
 
   handleResize (options: {

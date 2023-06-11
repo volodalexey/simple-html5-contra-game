@@ -1,4 +1,4 @@
-import { Container, Graphics, Assets, type ResolverManifest, type Spritesheet, type Texture } from 'pixi.js'
+import { Container, Graphics, Assets, type ResolverManifest } from 'pixi.js'
 import { logLayout } from '../utils/logger'
 import { type IScene } from './IScene'
 
@@ -75,16 +75,6 @@ export class LoaderScene extends Container implements IScene {
 
   private readonly downloadProgress = (progressRatio: number): void => {
     this.loaderBarFill.width = (LoaderScene.barOptions.width - LoaderScene.barOptions.borderThick * 2) * progressRatio
-  }
-
-  public getAssets (): {
-    spritesheet: Spritesheet
-    menuBackground: Texture
-  } {
-    return {
-      spritesheet: Assets.get('spritesheet'),
-      menuBackground: Assets.get('menuBackground')
-    }
   }
 
   public handleResize ({ viewWidth, viewHeight }: { viewWidth: number, viewHeight: number }): void {
