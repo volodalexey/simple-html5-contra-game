@@ -334,7 +334,7 @@ export class Game {
   #checkEntityStatus (entity: Entity, index: number): void {
     if (entity.isDead || this.#isScreenOut(entity)) {
       if (entity.type === 'hero') {
-        entity.damage()
+        (entity as Hero).crash()
       }
       entity.removeFromStage()
       this.#entities.splice(index, 1)

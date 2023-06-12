@@ -100,6 +100,14 @@ export class Hero extends Entity<HeroView> {
     }
   }
 
+  crash (): void {
+    this.#movement.x = 0
+    this.#GRAVITY_FORCE = 0
+    this.#velocityX = 0
+    this.#velocityY = 0
+    this.setDead()
+  }
+
   stay (platformY: number): void {
     if (this.#state === HeroState.jump || this.#state === HeroState.flydown) {
       this.#state = HeroState.stay
