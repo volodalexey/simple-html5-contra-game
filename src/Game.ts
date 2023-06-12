@@ -1,4 +1,4 @@
-import { type Application, TextStyle, Text } from 'pixi.js'
+import { type Application, TextStyle, Text, Graphics, Container } from 'pixi.js'
 import { type AssetsFactory } from './AssetsFactory'
 import { World } from './World'
 import { type Entity } from './entities/Entity'
@@ -20,6 +20,7 @@ import { type Hero } from './entities/Hero/Hero'
 import { type Runner } from './entities/Enemies/Runner/Runner'
 import { type Powerup } from './entities/Powerups/Powerup'
 import { MoveInterface } from './MoveInterface'
+import { logLayout } from './utils/logger'
 
 interface IGameOptions {
   pixiApp: Application
@@ -38,6 +39,8 @@ export interface IControlContext {
 }
 
 export class Game {
+  worldWidth = 1024
+  worldHeight = 768
   #pixiApp
   #hero
   #boss
@@ -45,7 +48,9 @@ export class Game {
   #entities: Entity[] = []
   #camera
   #bulletFactory
+  #worldResizeWrapper = new Container()
   #worldContainer
+  #worldMask
   #weapon
   #isEndGame = false
 
@@ -55,8 +60,15 @@ export class Game {
     this.#pixiApp = pixiApp
 
     this.#worldContainer = new World()
-    this.#pixiApp.stage.addChild(new StaticBackground({ screenSize: this.#pixiApp.screen, assets }))
-    this.#pixiApp.stage.addChild(this.#worldContainer)
+    this.#worldResizeWrapper.addChild(new StaticBackground({ screenSize: { width: this.worldWidth, height: this.worldHeight }, assets }))
+    this.#worldMask = new Graphics()
+    this.#worldMask.beginFill(0xffffff)
+    this.#worldMask.drawRect(0, 0, this.worldWidth, this.worldHeight)
+    this.#worldMask.endFill()
+    this.#worldContainer.mask = this.#worldMask
+    this.#worldResizeWrapper.addChild(this.#worldContainer)
+    this.#worldResizeWrapper.addChild(this.#worldMask)
+    this.#pixiApp.stage.addChild(this.#worldResizeWrapper)
 
     this.#bulletFactory = new BulletFactory({ worldContainer: this.#worldContainer, entities: this.#entities })
 
@@ -92,7 +104,7 @@ export class Game {
     this.#camera = new Camera({
       target: this.#hero,
       world: this.#worldContainer,
-      screenSize: this.#pixiApp.screen,
+      screenSize: { width: this.worldWidth, height: this.worldHeight },
       isBackScrollX: false
     })
 
@@ -109,6 +121,33 @@ export class Game {
     viewWidth: number
     viewHeight: number
   }): void {
+    const availableWidth = viewWidth
+    const availableHeight = viewHeight
+    const totalWidth = this.worldWidth
+    const totalHeight = this.worldHeight
+    let scale = 1
+    if (totalHeight >= totalWidth) {
+      scale = availableHeight / totalHeight
+      if (scale * totalWidth > availableWidth) {
+        scale = availableWidth / totalWidth
+      }
+      logLayout(`By height (sc=${scale}) ah=${availableHeight} th=${totalHeight}`)
+    } else {
+      scale = availableWidth / totalWidth
+      if (scale * totalHeight > availableHeight) {
+        scale = availableHeight / totalHeight
+      }
+      logLayout(`By width (sc=${scale}) aw=${availableWidth} tw=${totalWidth}`)
+    }
+    const occupiedWidth = Math.floor(totalWidth * scale)
+    const occupiedHeight = Math.floor(totalHeight * scale)
+    const x = availableWidth > occupiedWidth ? (availableWidth - occupiedWidth) / 2 : 0
+    const y = availableHeight > occupiedHeight ? (availableHeight - occupiedHeight) / 2 : 0
+    logLayout(`aw=${availableWidth} (ow=${occupiedWidth}) x=${x} ah=${availableHeight} (oh=${occupiedHeight}) y=${y}`)
+    this.#worldResizeWrapper.x = x
+    this.#worldResizeWrapper.width = occupiedWidth
+    this.#worldResizeWrapper.y = y
+    this.#worldResizeWrapper.height = occupiedHeight
     this.#moveInterface.handleResize({ viewWidth, viewHeight })
   }
 
@@ -169,10 +208,10 @@ export class Game {
     })
 
     const text = new Text('STAGE CLEAR', style)
-    text.x = this.#pixiApp.screen.width / 2 - text.width / 2
-    text.y = this.#pixiApp.screen.height / 2 - text.height / 2
+    text.x = this.worldWidth / 2 - text.width / 2
+    text.y = this.worldHeight / 2 - text.height / 2
 
-    this.#pixiApp.stage.addChild(text)
+    this.#worldContainer.addChild(text)
   }
 
   #checkDamage (entity: CharacterEntity): void {
@@ -294,6 +333,9 @@ export class Game {
 
   #checkEntityStatus (entity: Entity, index: number): void {
     if (entity.isDead || this.#isScreenOut(entity)) {
+      if (entity.type === 'hero') {
+        entity.damage()
+      }
       entity.removeFromStage()
       this.#entities.splice(index, 1)
     }
@@ -301,12 +343,12 @@ export class Game {
 
   #isScreenOut (entity: Entity): boolean {
     if (entity.type === EntityType.heroBullet || entity.type === EntityType.enemyBullet) {
-      return (entity.x > (this.#pixiApp.screen.width - this.#worldContainer.x) ||
+      return (entity.x > (this.worldWidth - this.#worldContainer.x) ||
             entity.x < (-this.#worldContainer.x) ||
-            entity.y > this.#pixiApp.screen.height ||
+            entity.y > this.worldHeight ||
             entity.y < 0)
     } else if (entity.type === EntityType.enemy || entity.type === EntityType.hero) {
-      return entity.x < (-this.#worldContainer.x) || entity.y > this.#pixiApp.screen.height
+      return entity.x < (-this.#worldContainer.x) || entity.y > this.worldHeight
     }
     return false
   }

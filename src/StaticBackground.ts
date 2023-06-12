@@ -16,8 +16,8 @@ export class StaticBackground extends Container {
   constructor ({ screenSize, assets }: IStaticBackgroundOptions) {
     super()
 
-    this.#createMountains({ assets, x: 600, y: 250, scale: 1.3 })
-    this.#createMountains({ assets, x: 820, y: 230, scale: 1.6 })
+    this.#createMountains({ assets, x: 500, y: 250, scale: 1.3 })
+    this.#createMountains({ assets, x: 800, y: 230, scale: 1.6 })
 
     for (let i = 0; i < 300; i++) {
       const star = this.#createStar()
@@ -27,7 +27,8 @@ export class StaticBackground extends Container {
 
     const water = new Graphics()
     water.beginFill(0x0072ec)
-    water.drawRect(0, screenSize.height / 2 + 130, screenSize.width, screenSize.height)
+    const waterY = screenSize.height / 2 + 130
+    water.drawRect(0, waterY, screenSize.width, screenSize.height - waterY)
     this.addChild(water)
   }
 
