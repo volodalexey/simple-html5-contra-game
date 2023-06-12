@@ -3,8 +3,8 @@ import { type IBulletContext } from '../Bullets/Bullet'
 import { Entity } from '../Entity'
 import { type HeroView } from './HeroView'
 import { HeroWeaponUnit } from './HeroWeaponUnit'
-import { type IButtonContext } from '../../KeyboardProcessor'
 import { EntityType } from '../EntityType'
+import { type IControlContext } from '../../Game'
 
 interface IHeroOptions {
   view: HeroView
@@ -104,11 +104,12 @@ export class Hero extends Entity<HeroView> {
     if (this.#state === HeroState.jump || this.#state === HeroState.flydown) {
       this.#state = HeroState.stay
       this.setView({
-        arrowLeft: this.#movement.x === -1,
-        arrowRight: this.#movement.x === 1,
-        arrowDown: this.#isLay,
-        arrowUp: this.#isStayUp,
-        shoot: false
+        left: this.#movement.x === -1,
+        right: this.#movement.x === 1,
+        down: this.#isLay,
+        up: this.#isStayUp,
+        shoot: false,
+        jump: false
       })
       this.isFall = false
     }
@@ -138,65 +139,40 @@ export class Hero extends Entity<HeroView> {
     this.isFall = true
   }
 
-  startLeftMove (): void {
-    this.#directionContext.left = -1
-
-    if (this.#directionContext.right > 0) {
+  setView (controlContext: IControlContext): void {
+    if (controlContext.left && !controlContext.right) {
+      this.#movement.x = -1
+    } else if (!controlContext.left && controlContext.right) {
+      this.#movement.x = 1
+    } else {
       this.#movement.x = 0
-      return
     }
-
-    this.#movement.x = -1
-  }
-
-  startRightMove (): void {
-    this.#directionContext.right = 1
-
-    if (this.#directionContext.left < 0) {
-      this.#movement.x = 0
-      return
-    }
-
-    this.#movement.x = 1
-  }
-
-  stopLeftMove (): void {
-    this.#directionContext.left = 0
-    this.#movement.x = this.#directionContext.right
-  }
-
-  stopRightMove (): void {
-    this.#directionContext.right = 0
-    this.#movement.x = this.#directionContext.left
-  }
-
-  setView (buttonContext: IButtonContext): void {
     this._view.flip(this.#movement.x)
-    this.#isLay = buttonContext.arrowDown
-    this.#isStayUp = buttonContext.arrowUp
+    this.#isLay = controlContext.down
+    this.#isStayUp = controlContext.up
 
-    this.#heroWeaponUnit.setBulletAngle({ buttonContext, isJump: this.isJumpState() })
+    this.#heroWeaponUnit.setBulletAngle({ controlContext, isJump: this.isJumpState() })
 
     if (this.isJumpState() || this.#state === HeroState.flydown) {
       return
     }
 
-    if (buttonContext.arrowLeft || buttonContext.arrowRight) {
-      if (buttonContext.arrowUp) {
+    if (controlContext.left || controlContext.right) {
+      if (controlContext.up) {
         this._view.showRunUp()
-      } else if (buttonContext.arrowDown) {
+      } else if (controlContext.down) {
         this._view.showRunDown()
       } else {
-        if (buttonContext.shoot) {
+        if (controlContext.shoot) {
           this._view.showRunShoot()
         } else {
           this._view.showRun()
         }
       }
     } else {
-      if (buttonContext.arrowUp) {
+      if (controlContext.up) {
         this._view.showStayUp()
-      } else if (buttonContext.arrowDown) {
+      } else if (controlContext.down) {
         this._view.showLay()
       } else {
         this._view.showStay()

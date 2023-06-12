@@ -1,10 +1,20 @@
+import { logKeyCode } from './utils/logger'
+
 export enum KeyName {
+  KeyW = 'KeyW',
+  KeyD = 'KeyD',
   KeyS = 'KeyS',
   KeyA = 'KeyA',
-  ArrowLeft = 'ArrowLeft',
-  ArrowRight = 'ArrowRight',
   ArrowUp = 'ArrowUp',
-  ArrowDown = 'ArrowDown'
+  ArrowRight = 'ArrowRight',
+  ArrowDown = 'ArrowDown',
+  ArrowLeft = 'ArrowLeft',
+  ShiftLeft = 'ShiftLeft',
+  ShiftRight = 'ShiftRight',
+  ControlLeft = 'ControlLeft',
+  ControlRight = 'ControlRight',
+  Space = 'Space',
+  Enter = 'Enter',
 }
 
 interface IKeyState {
@@ -13,32 +23,48 @@ interface IKeyState {
   executeDown?: () => void
 }
 
-export interface IButtonContext {
-  arrowLeft: boolean
-  arrowRight: boolean
-  arrowUp: boolean
-  arrowDown: boolean
-  shoot: boolean
-}
-
 export class KeyboardProcessor {
   #keyMap: Record<KeyName, IKeyState> = {
+    KeyW: {
+      isDown: false
+    },
+    KeyD: {
+      isDown: false
+    },
     KeyS: {
       isDown: false
     },
     KeyA: {
       isDown: false
     },
-    ArrowLeft: {
+    ArrowUp: {
       isDown: false
     },
     ArrowRight: {
       isDown: false
     },
-    ArrowUp: {
+    ArrowDown: {
       isDown: false
     },
-    ArrowDown: {
+    ArrowLeft: {
+      isDown: false
+    },
+    ShiftLeft: {
+      isDown: false
+    },
+    ShiftRight: {
+      isDown: false
+    },
+    ControlLeft: {
+      isDown: false
+    },
+    ControlRight: {
+      isDown: false
+    },
+    Space: {
+      isDown: false
+    },
+    Enter: {
       isDown: false
     }
   }
@@ -57,6 +83,7 @@ export class KeyboardProcessor {
   }
 
   onKeyDown = (e: KeyboardEvent): void => {
+    logKeyCode(`Down ${e.code}`)
     const button = this.#keyMap[e.code as KeyName]
     if (button != null) {
       button.isDown = true
@@ -65,6 +92,7 @@ export class KeyboardProcessor {
   }
 
   onKeyUp = (e: KeyboardEvent): void => {
+    logKeyCode(`Up ${e.code}`)
     const button = this.#keyMap[e.code as KeyName]
     if (button != null) {
       button.isDown = false
@@ -74,16 +102,5 @@ export class KeyboardProcessor {
 
   isButtonPressed (keyName: KeyName): boolean {
     return this.#keyMap[keyName].isDown
-  }
-
-  getArrowButtonContext (): IButtonContext {
-    const buttonContext = {
-      arrowLeft: this.isButtonPressed(KeyName.ArrowLeft),
-      arrowRight: this.isButtonPressed(KeyName.ArrowRight),
-      arrowUp: this.isButtonPressed(KeyName.ArrowUp),
-      arrowDown: this.isButtonPressed(KeyName.ArrowDown),
-      shoot: this.isButtonPressed(KeyName.KeyA)
-    }
-    return buttonContext
   }
 }

@@ -19,6 +19,7 @@ import { type SpreadgunPowerup } from './entities/Powerups/SpreadgunPowerup'
 import { type Hero } from './entities/Hero/Hero'
 import { type Runner } from './entities/Enemies/Runner/Runner'
 import { type Powerup } from './entities/Powerups/Powerup'
+import { MoveInterface } from './MoveInterface'
 
 interface IGameOptions {
   pixiApp: Application
@@ -26,6 +27,15 @@ interface IGameOptions {
 }
 
 type CharacterEntity = Hero | Runner | Powerup | SpreadgunPowerup
+
+export interface IControlContext {
+  left: boolean
+  right: boolean
+  up: boolean
+  down: boolean
+  shoot: boolean
+  jump: boolean
+}
 
 export class Game {
   #pixiApp
@@ -39,7 +49,8 @@ export class Game {
   #weapon
   #isEndGame = false
 
-  keyboardProcessor
+  #keyboardProcessor
+  #moveInterface
   constructor ({ pixiApp, assets }: IGameOptions) {
     this.#pixiApp = pixiApp
 
@@ -78,9 +89,6 @@ export class Game {
     })
     this.#boss = levelFactory.createLevel()
 
-    this.keyboardProcessor = new KeyboardProcessor()
-    this.setKeys()
-
     this.#camera = new Camera({
       target: this.#hero,
       world: this.#worldContainer,
@@ -90,14 +98,22 @@ export class Game {
 
     this.#weapon = new Weapon({ bulletFactory: this.#bulletFactory })
     this.#weapon.setWeapon(WeaponType.defaultGun)
+
+    this.#moveInterface = new MoveInterface()
+    this.#pixiApp.stage.addChild(this.#moveInterface)
+
+    this.#keyboardProcessor = new KeyboardProcessor()
   }
 
   handleResize ({ viewWidth, viewHeight }: {
     viewWidth: number
     viewHeight: number
-  }): void {}
+  }): void {
+    this.#moveInterface.handleResize({ viewWidth, viewHeight })
+  }
 
   handleUpdate (deltaMS: number): void {
+    this.handleControls()
     for (let i = 0; i < this.#entities.length; i++) {
       const entity = this.#entities[i]
       entity.handleUpdate()
@@ -115,6 +131,7 @@ export class Game {
     this.#weapon.handleUpdate(this.#hero.bulletContext)
 
     this.#checkGameStatus()
+    this.#moveInterface.handleUpdate()
   }
 
   #checkGameStatus (): void {
@@ -222,69 +239,57 @@ export class Game {
     }
   }
 
-  setKeys (): void {
-    const keyA = this.keyboardProcessor.getButton(KeyName.KeyA)
-    keyA.executeDown = () => {
-      if (!this.#hero.isDead && !this.#hero.isFall) {
-        const bullets = this.#entities.filter(bullet => bullet.type === this.#hero.bulletContext.type)
-        if (bullets.length > 10) {
-          return
-        }
-        this.#weapon.startFire()
-        this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-      }
+  getControlContext (): IControlContext {
+    const buttonContext = {
+      left: this.#keyboardProcessor.isButtonPressed(KeyName.ArrowLeft) || this.#keyboardProcessor.isButtonPressed(KeyName.KeyA),
+      right: this.#keyboardProcessor.isButtonPressed(KeyName.ArrowRight) || this.#keyboardProcessor.isButtonPressed(KeyName.KeyD),
+      up: this.#keyboardProcessor.isButtonPressed(KeyName.ArrowUp) || this.#keyboardProcessor.isButtonPressed(KeyName.KeyW),
+      down: this.#keyboardProcessor.isButtonPressed(KeyName.ArrowDown) || this.#keyboardProcessor.isButtonPressed(KeyName.KeyS),
+      shoot: this.#keyboardProcessor.isButtonPressed(KeyName.ShiftLeft) || this.#keyboardProcessor.isButtonPressed(KeyName.ControlLeft) ||
+        this.#keyboardProcessor.isButtonPressed(KeyName.ShiftRight) || this.#keyboardProcessor.isButtonPressed(KeyName.ControlRight),
+      jump: this.#keyboardProcessor.isButtonPressed(KeyName.Space) || this.#keyboardProcessor.isButtonPressed(KeyName.Enter)
     }
-    keyA.executeUp = () => {
-      if (!this.#hero.isDead && !this.#hero.isFall) {
-        this.#weapon.stopFire()
-        this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-      }
+    const { directionStick, shootButton, jumpButton } = this.#moveInterface
+    const pointerContext = {
+      left: directionStick.context.left,
+      right: directionStick.context.right,
+      up: directionStick.context.up,
+      down: directionStick.context.down,
+      shoot: shootButton.context.isPressed,
+      jump: jumpButton.context.isPressed
     }
+    return {
+      left: pointerContext.left || buttonContext.left,
+      right: pointerContext.right || buttonContext.right,
+      up: pointerContext.up || buttonContext.up,
+      down: pointerContext.down || buttonContext.down,
+      shoot: pointerContext.shoot || buttonContext.shoot,
+      jump: pointerContext.jump || buttonContext.jump
+    }
+  }
 
-    this.keyboardProcessor.getButton(KeyName.KeyS).executeDown = () => {
-      if (this.keyboardProcessor.isButtonPressed(KeyName.ArrowDown) &&
-            !(this.keyboardProcessor.isButtonPressed(KeyName.ArrowLeft) || this.keyboardProcessor.isButtonPressed(KeyName.ArrowRight))) {
+  handleControls (): void {
+    if (this.#hero.isDead) {
+      return
+    }
+    const controlContext = this.getControlContext()
+    if (controlContext.shoot && !this.#hero.isFall) {
+      const bullets = this.#entities.filter(bullet => bullet.type === this.#hero.bulletContext.type)
+      if (bullets.length > 10) {
+        return
+      }
+      this.#weapon.startFire()
+    } else {
+      this.#weapon.stopFire()
+    }
+    if (controlContext.jump) {
+      if (controlContext.down && !(controlContext.left || controlContext.right)) {
         this.#hero.throwDown()
       } else {
         this.#hero.jump()
       }
     }
-
-    const arrowLeft = this.keyboardProcessor.getButton(KeyName.ArrowLeft)
-    arrowLeft.executeDown = () => {
-      this.#hero.startLeftMove()
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-    arrowLeft.executeUp = () => {
-      this.#hero.stopLeftMove()
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-
-    const arrowRight = this.keyboardProcessor.getButton(KeyName.ArrowRight)
-    arrowRight.executeDown = () => {
-      this.#hero.startRightMove()
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-    arrowRight.executeUp = () => {
-      this.#hero.stopRightMove()
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-
-    const arrowUp = this.keyboardProcessor.getButton(KeyName.ArrowUp)
-    arrowUp.executeDown = () => {
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-    arrowUp.executeUp = () => {
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-
-    const arrowDown = this.keyboardProcessor.getButton(KeyName.ArrowDown)
-    arrowDown.executeDown = () => {
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
-    arrowDown.executeUp = () => {
-      this.#hero.setView(this.keyboardProcessor.getArrowButtonContext())
-    }
+    this.#hero.setView(controlContext)
   }
 
   #checkEntityStatus (entity: Entity, index: number): void {

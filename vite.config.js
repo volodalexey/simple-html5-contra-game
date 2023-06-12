@@ -28,7 +28,7 @@ export default defineConfig({
           }
         }
         for (const filePath of filePaths) {
-          if (filePath.startsWith('.git')) {
+          if (filePath === '.git') {
             continue
           }
           const fullFilePath = join(__dirname, 'dist', filePath)

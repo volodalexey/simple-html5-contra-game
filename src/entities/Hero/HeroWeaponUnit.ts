@@ -1,4 +1,4 @@
-import { type IButtonContext } from '../../KeyboardProcessor'
+import { type IControlContext } from '../../Game'
 import { type IBulletContext } from '../Bullets/Bullet'
 import { EntityType } from '../EntityType'
 import { type HeroView } from './HeroView'
@@ -32,19 +32,19 @@ export class HeroWeaponUnit {
     return this.#bulletContext
   }
 
-  setBulletAngle ({ buttonContext, isJump }: { buttonContext: IButtonContext, isJump: boolean }): void {
-    if (buttonContext.arrowLeft || buttonContext.arrowRight) {
-      if (buttonContext.arrowUp) {
+  setBulletAngle ({ controlContext, isJump }: { controlContext: IControlContext, isJump: boolean }): void {
+    if (controlContext.left || controlContext.right) {
+      if (controlContext.up) {
         this.#bulletAngle = -45
-      } else if (buttonContext.arrowDown) {
+      } else if (controlContext.down) {
         this.#bulletAngle = 45
       } else {
         this.#bulletAngle = 0
       }
     } else {
-      if (buttonContext.arrowUp) {
+      if (controlContext.up) {
         this.#bulletAngle = -90
-      } else if (buttonContext.arrowDown && isJump) {
+      } else if (controlContext.down && isJump) {
         this.#bulletAngle = 90
       } else {
         this.#bulletAngle = 0
